@@ -42,12 +42,18 @@
         pointer-events: none;
         background: radial-gradient(circle at center, rgba(0,0,0,0) 30%, rgba(0,0,0,0.2) 52%, rgba(0,0,0,0.9) 100%);
         opacity: 0;
-        transition: opacity 0.35s ease;
+        transition: opacity 0.8s ease, transform 0.8s ease;
       }
 
       body.spin-vignette::before {
         opacity: 1;
         animation: spinVignette 1.4s ease-in-out infinite alternate;
+      }
+
+      body.spin-vignette-fadeout::before {
+        opacity: 0;
+        transform: scale(1.03);
+        animation: none;
       }
 
       @keyframes spinVignette {

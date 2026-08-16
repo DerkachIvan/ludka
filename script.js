@@ -158,6 +158,10 @@ function onSpinEnd() {
 
     saveMoney();
     document.body.classList.remove('spin-vignette');
+    document.body.classList.add('spin-vignette-fadeout');
+    setTimeout(() => {
+        document.body.classList.remove('spin-vignette-fadeout');
+    }, 800);
     document.getElementById('money').textContent = `${money.toFixed(2)}$`;
     document.getElementById('betInput').disabled = false;
 }
@@ -353,6 +357,7 @@ spinBtn.addEventListener('click', () => {
     betInput.disabled = true;
     money -= betAmount;
     saveMoney();
+    document.body.classList.remove('spin-vignette-fadeout');
     document.body.classList.add('spin-vignette');
     document.getElementById('money').textContent = `${money.toFixed(2)}$`;
 
