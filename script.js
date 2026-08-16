@@ -397,7 +397,7 @@ function updateHistory(value, result) {
     };
 
     historyEntries.unshift(entry);
-    historyEntries = historyEntries.slice(0, 6);
+    historyEntries = historyEntries;
     saveHistoryEntry(Number(value), percent, result);
     renderHistory();
 }
@@ -539,7 +539,29 @@ spinBtn.addEventListener('click', () => {
     console.log(`Total angle: ${totalAngle} degrees`);
 });
 
+
 setInterval(drawArc, 1000/140); // Call drawArc every 100 milliseconds
+
+var time = 0;
+var deltaTime = 0;
+var lastFrameTime = performance.now();
+var frameCount = 0;
+var fps = 0;
+var fpsUpdateTime = performance.now();
+function calcTime(){
+    var now = performance.now();
+    time = now / 1000; // seconds
+    deltaTime = (now - lastFrameTime) / 1000; // seconds
+    lastFrameTime = now;
+
+    frameCount++;
+    if (now - fpsUpdateTime >= 1000) {
+        fps = frameCount;
+        frameCount = 0;
+        fpsUpdateTime = now;
+    }
+}
+
 
 const liveFeed = document.getElementById('liveFeed');
 const fakeNames = ['Alex', 'Nina', 'Luna', 'Dima', 'Ari', 'Kira', 'Max', 'Sera', 'Jin', 'Vik', 'Milo', 'Jade', 'Rex', 'Zoe', 'Mira'];
