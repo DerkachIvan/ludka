@@ -1,6 +1,7 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const spinBtn = document.getElementById('spinBtn');
+const spinSound = document.getElementById('spinSound');
 const percentButtons = document.querySelectorAll('.percent-btn');
 const promoTrigger = document.getElementById('promoTrigger');
 const promoModal = document.getElementById('promoModal');
@@ -16,10 +17,88 @@ const leftRisk = document.getElementById('leftRisk');
 
 ctx.translate(canvas.width / 2, canvas.height / 2);
 
+// Initialize clicking sound using Web Audio API
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let clickIntervalId = null;
+let isPlayingClicks = false;
+let lastClickTime = 0;
+
+function playClick() {
+    const now = audioContext.currentTime;
+    const buffer = audioContext.createBufferSource();
+    const gainNode = audioContext.createGain();
+    
+    // Create a white noise buffer for the click
+    const bufferSize = audioContext.sampleRate * 0.05; // 50ms
+    const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+    }
+    
+    buffer.buffer = noiseBuffer;
+    gainNode.gain.setValueAtTime(0.15, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+    
+    buffer.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    buffer.start(now);
+}
+
+function getClickInterval() {
+    // Calculate the progress of the spin (0 to 1)
+    const elapsed = performance.now() - spinStartTime;
+    const progress = Math.min(elapsed / spinDuration, 1);
+    
+    // Start fast (50ms) and end slow (250ms)
+    const minInterval = 50;
+    const maxInterval = 350;
+    const easeProgress = Math.pow(progress, 0.8); // Ease function for smoother transition
+    const currentInterval = minInterval + (maxInterval - minInterval) * easeProgress;
+    
+    return currentInterval;
+}
+
+function createSpinSound() {
+    if (isPlayingClicks) return;
+    
+    isPlayingClicks = true;
+    lastClickTime = performance.now();
+    
+    const updateClicks = () => {
+        if (!isPlayingClicks || !isSpinning) {
+            isPlayingClicks = false;
+            return;
+        }
+        
+        const now = performance.now();
+        const interval = getClickInterval();
+        
+        if (now - lastClickTime >= interval) {
+            playClick();
+            lastClickTime = now;
+        }
+        
+        requestAnimationFrame(updateClicks);
+    };
+    
+    requestAnimationFrame(updateClicks);
+}
+
+function stopSpinSound() {
+    isPlayingClicks = false;
+    if (clickIntervalId) {
+        clearInterval(clickIntervalId);
+        clickIntervalId = null;
+    }
+}
+
 const STORAGE_KEYS = {
     money: 'ludka_money',
     history: 'ludka_history'
 };
+
+let currentUserId = null; // Set when user logs in
 
 const savedMoney = Number(localStorage.getItem(STORAGE_KEYS.money));
 var money = Number.isFinite(savedMoney) ? savedMoney : 100;
@@ -27,10 +106,70 @@ let historyEntries = JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || '[
 
 function saveMoney() {
     localStorage.setItem(STORAGE_KEYS.money, String(money));
+    
+    // Also save to Supabase if user is logged in
+    if (currentUserId && typeof updateUserBalance === 'function') {
+        updateUserBalance(currentUserId, money).catch(err => {
+            console.error('Failed to save balance to Supabase:', err);
+        });
+    }
 }
 
 function saveHistory() {
     localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(historyEntries));
+}
+
+async function saveHistoryEntry(betAmount, percent, result) {
+    // Save locally
+    saveHistory();
+    
+    // Save to Supabase if user is logged in
+    if (currentUserId && typeof saveBetHistory === 'function') {
+        const success = await saveBetHistory(currentUserId, betAmount, percent, result);
+        if (!success) {
+            console.error('Failed to save history to Supabase');
+        }
+    }
+}
+
+// Load user balance from Supabase
+async function loadUserBalance(userId) {
+    if (typeof getUserBalance !== 'function') return;
+    
+    currentUserId = userId;
+    const balance = await getUserBalance(userId);
+    
+    if (balance !== null && balance !== undefined) {
+        money = Number(balance);
+        document.getElementById('money').textContent = `${money.toFixed(2)}$`;
+    }
+}
+
+// Load user history from Supabase
+async function loadUserHistory(userId) {
+    if (typeof getUserBetHistory !== 'function') return;
+    
+    const history = await getUserBetHistory(userId, 6);
+    
+    if (history && history.length > 0) {
+        historyEntries = history.map(entry => ({
+            value: entry.bet_amount,
+            percent: entry.percent,
+            result: entry.result
+        }));
+        renderHistory();
+    }
+}
+
+// Reset to local data when user logs out
+function resetToLocalData() {
+    currentUserId = null;
+    const savedMoney = Number(localStorage.getItem(STORAGE_KEYS.money));
+    money = Number.isFinite(savedMoney) ? savedMoney : 100;
+    historyEntries = JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || '[]');
+    
+    document.getElementById('money').textContent = `${money.toFixed(2)}$`;
+    renderHistory();
 }
 
 function renderHistory() {
@@ -162,6 +301,8 @@ function onSpinEnd() {
     setTimeout(() => {
         document.body.classList.remove('spin-vignette-fadeout');
     }, 800);
+    stopSpinSound();
+    setPercentButtonsDisabled(false);
     document.getElementById('money').textContent = `${money.toFixed(2)}$`;
     document.getElementById('betInput').disabled = false;
 }
@@ -195,8 +336,17 @@ document.getElementById('money').textContent = `${money.toFixed(2)}$`;
 renderHistory();
 updateLeftInfo();
 
+function setPercentButtonsDisabled(disabled) {
+    percentButtons.forEach(button => {
+        button.disabled = disabled;
+        button.setAttribute('aria-disabled', String(disabled));
+    });
+}
+
 percentButtons.forEach(button => {
     button.addEventListener('click', () => {
+        if (isSpinning || button.disabled) return;
+
         percentButtons.forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         procent = Number(button.dataset.percent);
@@ -248,14 +398,21 @@ function updateHistory(value, result) {
 
     historyEntries.unshift(entry);
     historyEntries = historyEntries.slice(0, 6);
-    saveHistory();
+    saveHistoryEntry(Number(value), percent, result);
     renderHistory();
 }
 
-clearHistoryBtn.addEventListener('click', () => {
+clearHistoryBtn.addEventListener('click', async () => {
     historyEntries = [];
     saveHistory();
     renderHistory();
+    
+    // Clear from Supabase if user is logged in
+    if (currentUserId && typeof clearBetHistory === 'function') {
+        await clearBetHistory(currentUserId).catch(err => {
+            console.error('Failed to clear history on Supabase:', err);
+        });
+    }
 });
 
 function drawArc() {
@@ -354,12 +511,17 @@ spinBtn.addEventListener('click', () => {
         return;
     }
 
+    if (isSpinning) return;
+
     betInput.disabled = true;
+    setPercentButtonsDisabled(true);
     money -= betAmount;
     saveMoney();
     document.body.classList.remove('spin-vignette-fadeout');
     document.body.classList.add('spin-vignette');
     document.getElementById('money').textContent = `${money.toFixed(2)}$`;
+    
+    createSpinSound();
 
     const maxFullRotation = 5;
     const minFullRotation = 2;
