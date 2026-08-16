@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Колесо удачи</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(circle at top, #2b1846 0%, #110d22 45%, #070813 100%);
+        font-family: Arial, sans-serif;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+          radial-gradient(circle at center, rgba(130, 180, 255, 0.06), transparent 58%);
+        background-size: 28px 28px, 28px 28px, 100% 100%;
+        mask-image: radial-gradient(circle at center, black 28%, transparent 100%);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(circle at center, rgba(0,0,0,0) 30%, rgba(0,0,0,0.2) 52%, rgba(0,0,0,0.9) 100%);
+        opacity: 0;
+        transition: opacity 0.35s ease;
+      }
+
+      body.spin-vignette::before {
+        opacity: 1;
+        animation: spinVignette 1.4s ease-in-out infinite alternate;
+      }
+
+      @keyframes spinVignette {
+        0% {
+          opacity: 0.55;
+          transform: scale(1);
+        }
+        100% {
+          opacity: 0.92;
+          transform: scale(1.06);
+        }
+      }
+
+      .auth-actions {
+        position: fixed;
+        top: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        z-index: 22;
+      }
+
+      .left-corner,
+      .left-side,
+      .history-panel,
+      .wrap,
+      .live-feed,
+      .promo-modal {
+        position: relative;
+        z-index: 2;
+      }
+
+      .auth-btn {
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.04);
+        color: #edf3ff;
+        border-radius: 10px;
+        padding: 8px 14px;
+        font-size: 0.76rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .auth-btn.primary {
+        background: linear-gradient(135deg, rgba(96, 165, 250, 0.28), rgba(124, 92, 255, 0.22));
+        border-color: rgba(147, 197, 253, 0.42);
+      }
+
+      .auth-btn:hover {
+        transform: translateY(-1px);
+        background: rgba(255,255,255,0.08);
+      }
+
+      .history-panel {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 260px;
+        background: rgba(15, 18, 30, 0.8);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 14px;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+        padding: 12px 14px;
+      }
+
+      .history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .history-title {
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #bfc7ff;
+      }
+
+      .clear-history {
+        background: transparent;
+        border: none;
+        color: #ffb4b4;
+        cursor: pointer;
+        font-size: 0.75rem;
+      }
+
+      .history-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 200px;
+        overflow: auto;
+      }
+
+      .history-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.04);
+        color: #dfe7ff;
+        font-size: 0.85rem;
+        border-left: 4px solid transparent;
+      }
+
+      .history-item.win {
+        background: rgba(52, 211, 153, 0.12);
+        border-left-color: #34d399;
+      }
+
+      .history-item.loss {
+        background: rgba(248, 113, 113, 0.12);
+        border-left-color: #f87171;
+      }
+
+      .history-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .history-badge {
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .history-item.win .history-badge {
+        color: #5ee6a8;
+      }
+
+      .history-item.loss .history-badge {
+        color: #fca5a5;
+      }
+
+      .left-side {
+        position: fixed;
+        left: 24px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 190px;
+        padding: 10px 10px 8px;
+        border-radius: 16px;
+        background: rgba(15, 18, 30, 0.72);
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+      }
+
+      .left-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        margin-bottom: 12px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.06);
+        color: #f2f6ff;
+        font-size: 0.8rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .left-footer {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        color: #a7b5d8;
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-align: center;
+      }
+
+      .left-corner {
+        position: fixed;
+        left: 12px;
+        width: 120px;
+        height: 120px;
+        border-radius: 18px;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .left-corner.top {
+        top: 18px;
+      }
+
+      .left-corner.bottom {
+        bottom: 18px;
+      }
+
+      .left-brand {
+        font-size: 1.05rem;
+        font-weight: 800;
+        letter-spacing: 0.22em;
+        color: #f3f6ff;
+        text-transform: uppercase;
+        text-shadow: 0 0 12px rgba(130, 170, 255, 0.7), 0 0 24px rgba(130, 170, 255, 0.35);
+      }
+
+      .mini-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .mini-title {
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #bfc7ff;
+      }
+
+      .mini-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 0.8rem;
+        color: #dde6ff;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+
+      .mini-row:last-child {
+        border-bottom: none;
+      }
+
+      .mini-row strong {
+        color: #f5d76f;
+      }
+
+      .mini-row .risk-low {
+        color: #5ee6a8;
+      }
+
+      .mini-row .risk-medium {
+        color: #fbbf24;
+      }
+
+      .mini-row .risk-high {
+        color: #f87171;
+      }
+
+      .wrap {
+        position: relative;
+        width: min(90vw, 620px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .money-panel {
+        width: min(90vw, 420px);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 18px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      }
+
+      .money-panel.win-anim {
+        animation: winPulse 1.1s ease-out;
+        border-color: rgba(94, 230, 168, 0.6);
+        box-shadow: 0 0 0 1px rgba(94, 230, 168, 0.08), 0 10px 20px rgba(52, 211, 153, 0.12);
+      }
+
+      @keyframes winPulse {
+        0% { transform: scale(1); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2); }
+        20% { transform: scale(1.01) rotate(-0.25deg); box-shadow: 0 11px 24px rgba(52, 211, 153, 0.09); }
+        50% { transform: scale(1.02) rotate(0.25deg); box-shadow: 0 12px 26px rgba(52, 211, 153, 0.12); }
+        80% { transform: scale(1.01); box-shadow: 0 11px 24px rgba(52, 211, 153, 0.08); }
+        100% { transform: scale(1); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2); }
+      }
+
+      .win-particles {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 12;
+        overflow: hidden;
+      }
+
+      .win-particles .particle {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        opacity: 0;
+        box-shadow: 0 0 10px rgba(255,255,255,0.6);
+        animation: particleBurst 0.95s ease-out forwards;
+      }
+
+      @keyframes particleBurst {
+        0% {
+          opacity: 1;
+          transform: translate(0, 0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(var(--dx), var(--dy)) scale(0.3);
+        }
+      }
+
+      .promo-box {
+        display: flex;
+        justify-content: center;
+        width: min(90vw, 420px);
+        margin-top: 4px;
+      }
+
+      .promo-trigger {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 16px;
+        background: rgba(255,255,255,0.08);
+        color: #dfe7ff;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.12);
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+
+      .promo-trigger:hover {
+        background: rgba(255,255,255,0.12);
+        transform: translateY(-1px);
+      }
+
+      .promo-modal {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(7, 8, 19, 0.7);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 20;
+      }
+
+      .promo-modal.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .promo-modal-card {
+        width: min(90vw, 340px);
+        background: rgba(15, 18, 30, 0.95);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 18px;
+        padding: 18px 16px 16px;
+        box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+        position: relative;
+      }
+
+      .promo-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+
+      .promo-modal-title {
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #dfe7ff;
+      }
+
+      .promo-close {
+        border: none;
+        background: transparent;
+        color: #fff;
+        font-size: 1.3rem;
+        cursor: pointer;
+      }
+
+      .promo-input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.15);
+        background: rgba(10, 12, 26, 0.7);
+        color: #fff;
+        font-size: 0.95rem;
+        outline: none;
+        margin-bottom: 12px;
+      }
+
+      .promo-btn {
+        width: 100%;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: #fff;
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .money-label {
+        font-size: 0.9rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #bfc7ff;
+      }
+
+      #money {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #f5d76f;
+      }
+
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: min(90vw, 320px);
+      }
+
+      .percent-buttons {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .percent-btn {
+        border: 1px solid rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.07);
+        color: #fff;
+        border-radius: 10px;
+        padding: 10px 8px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .percent-btn.active {
+        background: linear-gradient(135deg, #ffb703, #f77f00);
+        border-color: rgba(255,255,255,0.3);
+        box-shadow: 0 8px 18px rgba(247, 127, 0, 0.35);
+      }
+
+      .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .input-label {
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #dfe7ff;
+      }
+
+      #betInput {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        background: rgba(10, 12, 26, 0.7);
+        color: #fff;
+        font-size: 1.1rem;
+        outline: none;
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+
+      #betInput::-webkit-outer-spin-button,
+      #betInput::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      #betInput:focus {
+        border-color: #7bb7ff;
+        box-shadow: 0 0 0 3px rgba(123, 183, 255, 0.2);
+      }
+
+      .button {
+        border: none;
+        border-radius: 999px;
+        padding: 14px 28px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #fff;
+        background: linear-gradient(135deg, #4aa3ff, #7c5cff);
+        box-shadow: 0 12px 24px rgba(87, 97, 255, 0.45);
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      }
+
+      .button.secondary {
+        background: linear-gradient(135deg, #34d399, #10b981);
+        box-shadow: 0 12px 24px rgba(16, 185, 129, 0.35);
+        padding: 10px 16px;
+        font-size: 0.8rem;
+        letter-spacing: 0.04em;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 28px rgba(87, 97, 255, 0.55);
+      }
+
+      .button:active {
+        transform: translateY(0);
+      }
+
+      .button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .live-feed {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 220px;
+        z-index: 18;
+        pointer-events: none;
+      }
+
+      .live-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: rgba(11, 19, 28, 0.72);
+        border: 1px solid rgba(62, 214, 146, 0.35);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+        animation: liveSlide 3.6s ease forwards;
+        opacity: 0;
+      }
+
+      .live-item .name {
+        font-size: 0.72rem;
+        color: #dfe7ff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .live-item .amount {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #6ef4b0;
+        white-space: nowrap;
+      }
+
+      @keyframes liveSlide {
+        0% {
+          opacity: 0;
+          transform: translateX(18px) scale(0.96);
+        }
+        12% {
+          opacity: 1;
+          transform: translateX(0) scale(1);
+        }
+        80% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+          transform: translateX(10px) scale(0.98);
+        }
+      }
+
+      canvas {
+        width: min(82vw, 480px);
+        height: auto;
+        display: block;
+        filter: drop-shadow(0 25px 30px rgba(0, 0, 0, 0.45));
+      }
+
+      input[type="range"] {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="auth-actions">
+      <button class="auth-btn" type="button">Вход</button>
+      <button class="auth-btn primary" type="button">Регистрация</button>
+    </div>
+
+    <div class="left-corner top" aria-hidden="true"><span class="left-brand">LUDKA</span></div>
+    <div class="left-corner bottom" aria-hidden="true"></div>
+
+    <aside class="left-side">
+      <div class="left-header">Lucky Wheel</div>
+      <div class="mini-panel">
+        <span class="mini-title">События</span>
+        <div class="mini-row"><span>Шанс</span><strong id="leftChance">25%</strong></div>
+        <div class="mini-row"><span>Выигрыш</span><strong id="leftPrize">+100%</strong></div>
+        <div class="mini-row"><span>Риск</span><strong id="leftRisk" class="risk-low">Низкий</strong></div>
+      </div>
+      <div class="left-footer">Night Spin</div>
+    </aside>
+
+    <aside class="history-panel">
+      <div class="history-header">
+        <span class="history-title">История</span>
+        <button class="clear-history" type="button">Очистить</button>
+      </div>
+      <ul class="history-list" id="historyList"></ul>
+    </aside>
+
+    <div class="wrap">
+      <div class="money-panel">
+        <span class="money-label">Баланс</span>
+        <span id="money">100$</span>
+        <button class="button secondary" id="addMoneyBtn" type="button">+ Пополнить</button>
+      </div>
+
+      <div class="live-feed" id="liveFeed" aria-live="polite"></div>
+
+      <div class="promo-box">
+        <button class="promo-trigger" id="promoTrigger" type="button">Промокод</button>
+      </div>
+
+      <div class="promo-modal" id="promoModal" aria-hidden="true">
+        <div class="promo-modal-card">
+          <div class="promo-modal-header">
+            <span class="promo-modal-title">Промокод</span>
+            <button class="promo-close" id="promoClose" type="button" aria-label="Закрыть">×</button>
+          </div>
+          <input class="promo-input" id="promoInput" type="text" value="" aria-label="Промокод" placeholder="Введите код" />
+          <button class="promo-btn" id="promoBtn" type="button">Активировать</button>
+        </div>
+      </div>
+
+      <canvas id="canvas" width="620" height="620"></canvas>
+      <div class="win-particles" id="winParticles" aria-hidden="true"></div>
+
+      <div class="controls">
+        <div class="input-group">
+          <label class="input-label" for="betInput">Ставка</label>
+          <input type="number" id="betInput" min="1" max="100" value="10" />
+        </div>
+
+        <div class="percent-buttons">
+          <button class="percent-btn" type="button" data-percent="0.01">1%</button>
+          <button class="percent-btn" type="button" data-percent="0.05">5%</button>
+          <button class="percent-btn active" type="button" data-percent="0.25">25%</button>
+          <button class="percent-btn" type="button" data-percent="0.5">50%</button>
+          <button class="percent-btn" type="button" data-percent="0.75">75%</button>
+        </div>
+
+        <button class="button" id="spinBtn">Крутить</button>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
