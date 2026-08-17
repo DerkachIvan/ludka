@@ -141,7 +141,7 @@ async function loadUserBalance(userId) {
     
     if (balance !== null && balance !== undefined) {
         money = Number(balance);
-        document.getElementById('money').textContent = `${money.toFixed(2)}$`;
+        document.getElementById('money').textContent = `${money.toFixed(2)}₴`;
     }
 }
 
@@ -168,7 +168,7 @@ function resetToLocalData() {
     money = Number.isFinite(savedMoney) ? savedMoney : 100;
     historyEntries = JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || '[]');
     
-    document.getElementById('money').textContent = `${money.toFixed(2)}$`;
+    document.getElementById('money').textContent = `${money.toFixed(2)}₴`;
     renderHistory();
 }
 
@@ -303,7 +303,7 @@ function onSpinEnd() {
     }, 800);
     stopSpinSound();
     setPercentButtonsDisabled(false);
-    document.getElementById('money').textContent = `${money.toFixed(2)}$`;
+    document.getElementById('money').textContent = `${money.toFixed(2)}₴`;
     document.getElementById('betInput').disabled = false;
 }
 
@@ -314,11 +314,13 @@ const radOffset = angleOffset * (Math.PI / 180);
 function updateLeftInfo() {
     const percentValue = Math.round(procent * 100);
     //const prizeValue = Math.round((1 / procent) * 100);
-    const bet = parseFloat(document.getElementById('betInput').value)
-    const prizeValue = Math.round(1 / procent) * bet;
+    const bet = parseFloat(document.getElementById('betInput').value) || 0;
+    const winChance = Number(procent);
+    const winAmount = bet / winChance;
+    const prizeValue = winAmount.toFixed(2);
 
     leftChance.textContent = `${percentValue}%`;
-    leftPrize.textContent = `+${prizeValue}%`;
+    leftPrize.textContent = `+${prizeValue}₴`;
 
     leftRisk.classList.remove('risk-low', 'risk-medium', 'risk-high');
 
@@ -334,7 +336,7 @@ function updateLeftInfo() {
     }
 }
 
-document.getElementById('money').textContent = `${money.toFixed(2)}$`;
+document.getElementById('money').textContent = `${money.toFixed(2)}₴`;
 renderHistory();
 updateLeftInfo();
 
@@ -382,7 +384,7 @@ promoBtn.addEventListener('click', () => {
     if (enteredCode === 'qqwwqq') {
         money += 100;
         saveMoney();
-        document.getElementById('money').textContent = `${money.toFixed(2)}$`;
+        document.getElementById('money').textContent = `${money.toFixed(2)}₴`;
         console.log('Промокод активирован: +100');
         closePromoModal();
     } else {
@@ -521,7 +523,7 @@ spinBtn.addEventListener('click', () => {
     saveMoney();
     document.body.classList.remove('spin-vignette-fadeout');
     document.body.classList.add('spin-vignette');
-    document.getElementById('money').textContent = `${money.toFixed(2)}$`;
+    document.getElementById('money').textContent = `${money.toFixed(2)}₴`;
     
     createSpinSound();
 
@@ -566,7 +568,7 @@ function calcTime(){
 
 
 const liveFeed = document.getElementById('liveFeed');
-const fakeNames = ['Alex', 'Nina', 'Luna', 'Dima', 'Ari', 'Kira', 'Max', 'Sera', 'Jin', 'Vik', 'Milo', 'Jade', 'Rex', 'Zoe', 'Mira'];
+const fakeNames = ['Alex', 'Nina', 'Luna', 'Dima', 'Ari', 'Kira', 'Max', 'Sera', 'Jin', 'Vik', 'Milo', 'Jade', 'Rex', 'Zoe', 'Mira', 'Vova'];
 
 function spawnLiveWin() {
     if (!liveFeed) return;
@@ -578,7 +580,7 @@ function spawnLiveWin() {
 
     item.innerHTML = `
         <span class="name">${name}</span>
-        <span class="amount">+${amount}$</span>
+        <span class="amount">+${amount}₴</span>
     `;
 
     liveFeed.appendChild(item);
