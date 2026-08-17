@@ -313,7 +313,8 @@ const radOffset = angleOffset * (Math.PI / 180);
 
 function updateLeftInfo() {
     const percentValue = Math.round(procent * 100);
-    const prizeValue = Math.round((1 / procent) * 100);
+    //const prizeValue = Math.round((1 / procent) * 100);
+    const prizeValue = Math.round(1 / procent) * bet;
 
     leftChance.textContent = `${percentValue}%`;
     leftPrize.textContent = `+${prizeValue}%`;
